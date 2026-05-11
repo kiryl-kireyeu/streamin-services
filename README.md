@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Streaming Service Transactions Dashboard
 
-## Getting Started
+Test assignment project for a Senior Front-end Engineer role. The application will provide a transactions management dashboard for a streaming service subscriber.
 
-First, run the development server:
+The target user should be able to review payment history, download mock invoices, and retry failed payments in bulk.
+
+## Project Plan
+
+`PLAN.md` is the source of truth for the implementation scope, architecture, staged workflow, and acceptance criteria.
+
+Implementation is intentionally staged. After each stage, the agent must stop, report verification results, and wait for user approval before continuing.
+
+## Stack
+
+- Next.js 16 with App Router
+- React 19
+- TypeScript
+- Tailwind CSS 4
+- shadcn/ui components
+- pnpm
+- Vitest and React Testing Library will be added during Stage 3
+
+## Architecture
+
+The project uses a feature-first structure:
+
+- `src/app/` - Next.js routes and app shell
+- `src/features/transactions/` - transaction feature domain code
+- `src/features/transactions/components/` - dashboard UI components
+- `src/features/transactions/hooks/` - stateful dashboard logic
+- `src/features/transactions/lib/` - mock API and utilities
+- `src/features/transactions/types.ts` - transaction domain types
+- `src/components/ui/` - shadcn/ui components
+- `src/lib/` - shared utilities
+
+## Development
+
+Install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Run the development server:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open `http://localhost:3000`.
 
-## Learn More
+## Verification
 
-To learn more about Next.js, take a look at the following resources:
+Run linting:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm lint
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Run a production build:
 
-## Deploy on Vercel
+```bash
+pnpm build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Testing will be configured during Stage 3. After that stage, use:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm test
+```
+
+## Notes
+
+- The project does not use a real backend.
+- Transaction data and payment retry APIs will be simulated.
+- Invoice download will generate a dummy browser download.
+- Browser-based behavior should be verified manually after UI stages.
