@@ -3,30 +3,46 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { downloadInvoiceFile } from "../lib/download-invoice-file";
-import { generateInvoice } from "../lib/mock-api";
+import { generateInvoice, retryPayment } from "../lib/mock-api";
 import type { Transaction } from "../types";
 
 export const useTransactionsDashboard = (
   initialTransactions: readonly Transaction[],
 ) => {
+  const [transactions, setTransactions] = useState<Transaction[]>(() =>
+    initialTransactions.map((transaction) => ({ ...transaction })),
+  );
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<
     Set<Transaction["id"]>
   >(() => new Set());
   const [generatingInvoiceIds, setGeneratingInvoiceIds] = useState<
     Set<Transaction["id"]>
   >(() => new Set());
+  const [retryingTransactionIds, setRetryingTransactionIds] = useState<
+    Set<Transaction["id"]>
+  >(() => new Set());
 
   const failedTransactionIds = useMemo(
     () =>
       new Set(
-        initialTransactions
+        transactions
           .filter((transaction) => transaction.status === "Failed")
           .map((transaction) => transaction.id),
       ),
-    [initialTransactions],
+    [transactions],
   );
 
-  const selectedRetryCount = selectedTransactionIds.size;
+  const selectedRetryableTransactionIds = useMemo(
+    () =>
+      [...selectedTransactionIds].filter(
+        (transactionId) =>
+          failedTransactionIds.has(transactionId) &&
+          !retryingTransactionIds.has(transactionId),
+      ),
+    [failedTransactionIds, retryingTransactionIds, selectedTransactionIds],
+  );
+
+  const selectedRetryCount = selectedRetryableTransactionIds.length;
 
   const isTransactionSelected = (transactionId: Transaction["id"]) =>
     selectedTransactionIds.has(transactionId);
@@ -51,6 +67,63 @@ export const useTransactionsDashboard = (
 
   const isInvoiceGenerating = (transactionId: Transaction["id"]) =>
     generatingInvoiceIds.has(transactionId);
+
+  const isTransactionRetrying = (transactionId: Transaction["id"]) =>
+    retryingTransactionIds.has(transactionId);
+
+  const retrySelectedPayments = () => {
+    const retryTransactionIds = selectedRetryableTransactionIds;
+
+    if (retryTransactionIds.length === 0) {
+      return;
+    }
+
+    setRetryingTransactionIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+
+      for (const transactionId of retryTransactionIds) {
+        nextIds.add(transactionId);
+      }
+
+      return nextIds;
+    });
+
+    for (const transactionId of retryTransactionIds) {
+      void retryPayment(transactionId)
+        .then((result) => {
+          setTransactions((currentTransactions) =>
+            currentTransactions.map((transaction) =>
+              transaction.id === result.transactionId
+                ? { ...transaction, status: result.status }
+                : transaction,
+            ),
+          );
+        })
+        .catch(() => {
+          setTransactions((currentTransactions) =>
+            currentTransactions.map((transaction) =>
+              transaction.id === transactionId
+                ? { ...transaction, status: "Failed" }
+                : transaction,
+            ),
+          );
+        })
+        .finally(() => {
+          setSelectedTransactionIds((currentSelection) => {
+            const nextSelection = new Set(currentSelection);
+            nextSelection.delete(transactionId);
+
+            return nextSelection;
+          });
+          setRetryingTransactionIds((currentIds) => {
+            const nextIds = new Set(currentIds);
+            nextIds.delete(transactionId);
+
+            return nextIds;
+          });
+        });
+    }
+  };
 
   const downloadInvoice = async (transaction: Transaction) => {
     let shouldStartDownload = false;
@@ -88,11 +161,14 @@ export const useTransactionsDashboard = (
   };
 
   return {
+    transactions,
     selectedRetryCount,
     isRetrySelectionEmpty: selectedRetryCount === 0,
     isTransactionSelected,
     isInvoiceGenerating,
+    isTransactionRetrying,
     downloadInvoice,
+    retrySelectedPayments,
     toggleTransactionSelection,
   };
 };

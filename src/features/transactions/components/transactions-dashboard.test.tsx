@@ -1,9 +1,17 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getTransactions } from "../lib/mock-api";
 import { downloadInvoiceFile } from "../lib/download-invoice-file";
+import { getTransactions, retryPayment } from "../lib/mock-api";
+import type { RetryPaymentResult } from "../types";
 import { TransactionsDashboard } from "./transactions-dashboard";
 
 const { toastErrorMock, toastSuccessMock } = vi.hoisted(() => ({
@@ -14,6 +22,15 @@ const { toastErrorMock, toastSuccessMock } = vi.hoisted(() => ({
 vi.mock("../lib/download-invoice-file", () => ({
   downloadInvoiceFile: vi.fn(),
 }));
+
+vi.mock("../lib/mock-api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/mock-api")>();
+
+  return {
+    ...actual,
+    retryPayment: vi.fn(actual.retryPayment),
+  };
+});
 
 vi.mock("sonner", () => ({
   toast: {
@@ -28,6 +45,26 @@ const renderDashboard = async () => {
   render(<TransactionsDashboard transactions={transactions} />);
 
   return { transactions };
+};
+
+const createRetryResult = (
+  transactionId: string,
+  status: RetryPaymentResult["status"],
+): RetryPaymentResult => ({
+  transactionId,
+  status,
+  attemptedAt: "2026-05-12T10:00:00.000Z",
+});
+
+const createDeferredRetry = () => {
+  let resolve!: (value: RetryPaymentResult) => void;
+  let reject!: (error?: unknown) => void;
+  const promise = new Promise<RetryPaymentResult>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return { promise, resolve, reject };
 };
 
 describe("TransactionsDashboard", () => {
@@ -170,5 +207,96 @@ describe("TransactionsDashboard", () => {
     );
     expect(invoiceButton).toBeEnabled();
     expect(invoiceButton).toHaveTextContent("Download Invoice");
+  });
+
+  it("retries selected failed rows independently and restores selection by outcome", async () => {
+    const user = userEvent.setup();
+    const firstRetry = createDeferredRetry();
+    const secondRetry = createDeferredRetry();
+    const retryPaymentMock = vi.mocked(retryPayment);
+
+    retryPaymentMock.mockImplementation((transactionId) => {
+      if (transactionId === "txn_1002") {
+        return firstRetry.promise;
+      }
+
+      if (transactionId === "txn_1004") {
+        return secondRetry.promise;
+      }
+
+      throw new Error(`Unexpected retry for ${transactionId}`);
+    });
+
+    await renderDashboard();
+
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: "Select failed transaction txn_1002",
+      }),
+    );
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: "Select failed transaction txn_1004",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Retry Selected (2)" }),
+    );
+
+    expect(retryPaymentMock).toHaveBeenCalledTimes(2);
+    expect(retryPaymentMock).toHaveBeenNthCalledWith(1, "txn_1002");
+    expect(retryPaymentMock).toHaveBeenNthCalledWith(2, "txn_1004");
+    expect(
+      screen.getByRole("status", { name: "Retrying transaction txn_1002" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: "Retrying transaction txn_1004" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", {
+        name: "Select failed transaction txn_1002",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", {
+        name: "Select failed transaction txn_1004",
+      }),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      firstRetry.resolve(createRetryResult("txn_1002", "Success"));
+      await firstRetry.promise;
+    });
+
+    const successfulRetryRow = screen.getByRole("row", { name: /txn_1002/ });
+    const pendingRetryRow = screen.getByRole("row", { name: /txn_1004/ });
+
+    await waitFor(() => {
+      expect(within(successfulRetryRow).getByText("Success")).toBeInTheDocument();
+    });
+    expect(
+      within(successfulRetryRow).queryByRole("checkbox"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: "Retrying transaction txn_1004" }),
+    ).toBeInTheDocument();
+    expect(within(pendingRetryRow).getByText("Retrying...")).toBeInTheDocument();
+
+    await act(async () => {
+      secondRetry.resolve(createRetryResult("txn_1004", "Failed"));
+      await secondRetry.promise;
+    });
+
+    await waitFor(() => {
+      expect(within(pendingRetryRow).getByText("Failed")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Select failed transaction txn_1004",
+      }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Retry Selected" }),
+    ).toBeDisabled();
   });
 });

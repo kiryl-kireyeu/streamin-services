@@ -35,11 +35,14 @@ export function TransactionsDashboard({
   transactions,
 }: TransactionsDashboardProps) {
   const {
+    transactions: displayedTransactions,
     selectedRetryCount,
     isRetrySelectionEmpty,
     isTransactionSelected,
     isInvoiceGenerating,
+    isTransactionRetrying,
     downloadInvoice,
+    retrySelectedPayments,
     toggleTransactionSelection,
   } = useTransactionsDashboard(transactions);
 
@@ -65,7 +68,11 @@ export function TransactionsDashboard({
           </p>
         </div>
 
-        <Button disabled={isRetrySelectionEmpty} className="w-full sm:w-auto">
+        <Button
+          disabled={isRetrySelectionEmpty}
+          className="w-full sm:w-auto"
+          onClick={retrySelectedPayments}
+        >
           Retry Selected
           {selectedRetryCount > 0 ? ` (${selectedRetryCount})` : null}
         </Button>
@@ -86,17 +93,25 @@ export function TransactionsDashboard({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {transactions.map((transaction) => {
+            {displayedTransactions.map((transaction) => {
               const isFailed = transaction.status === "Failed";
               const invoiceGenerating = isInvoiceGenerating(transaction.id);
+              const transactionRetrying = isTransactionRetrying(transaction.id);
 
               return (
                 <TableRow key={transaction.id}>
                   <TableCell>
-                    {isFailed ? (
+                    {transactionRetrying ? (
+                      <span
+                        aria-label={`Retrying transaction ${transaction.id}`}
+                        role="status"
+                        className="block size-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-primary"
+                      />
+                    ) : isFailed ? (
                       <Checkbox
                         aria-label={`Select failed transaction ${transaction.id}`}
                         checked={isTransactionSelected(transaction.id)}
+                        disabled={transactionRetrying}
                         onCheckedChange={() =>
                           toggleTransactionSelection(transaction.id)
                         }
@@ -120,7 +135,7 @@ export function TransactionsDashboard({
                       variant="outline"
                       className={statusStyles[transaction.status]}
                     >
-                      {transaction.status}
+                      {transactionRetrying ? "Retrying..." : transaction.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
