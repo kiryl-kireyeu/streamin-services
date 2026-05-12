@@ -38,6 +38,8 @@ export function TransactionsDashboard({
     selectedRetryCount,
     isRetrySelectionEmpty,
     isTransactionSelected,
+    isInvoiceGenerating,
+    downloadInvoice,
     toggleTransactionSelection,
   } = useTransactionsDashboard(transactions);
 
@@ -86,6 +88,7 @@ export function TransactionsDashboard({
           <TableBody>
             {transactions.map((transaction) => {
               const isFailed = transaction.status === "Failed";
+              const invoiceGenerating = isInvoiceGenerating(transaction.id);
 
               return (
                 <TableRow key={transaction.id}>
@@ -126,8 +129,10 @@ export function TransactionsDashboard({
                       variant="outline"
                       size="sm"
                       aria-label={`Download invoice ${transaction.invoiceNumber}`}
+                      disabled={invoiceGenerating}
+                      onClick={() => void downloadInvoice(transaction)}
                     >
-                      Download Invoice
+                      {invoiceGenerating ? "Generating..." : "Download Invoice"}
                     </Button>
                   </TableCell>
                 </TableRow>

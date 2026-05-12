@@ -16,6 +16,10 @@ export {
   formatTransactionAmount,
   formatTransactionDateTime,
 } from "./lib/formatters";
+export {
+  createInvoiceDownloadUrl,
+  downloadInvoiceFile,
+} from "./lib/download-invoice-file";
 export { MOCK_TRANSACTIONS } from "./lib/mock-data";
 export { TRANSACTION_STATUSES } from "./types";
 export { TransactionsDashboard } from "./components/transactions-dashboard";
