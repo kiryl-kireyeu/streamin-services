@@ -12,8 +12,14 @@ export {
   RETRY_PAYMENT_MAX_DELAY_MS,
   RETRY_PAYMENT_MIN_DELAY_MS,
 } from "./lib/constants";
+export {
+  formatTransactionAmount,
+  formatTransactionDateTime,
+} from "./lib/formatters";
 export { MOCK_TRANSACTIONS } from "./lib/mock-data";
 export { TRANSACTION_STATUSES } from "./types";
+export { TransactionsDashboard } from "./components/transactions-dashboard";
+export { useTransactionsDashboard } from "./hooks/use-transactions-dashboard";
 export type {
   GenerateInvoiceOptions,
   InvoiceFile,
