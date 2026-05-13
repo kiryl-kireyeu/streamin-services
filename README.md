@@ -1,8 +1,8 @@
 # Streaming Service Transactions Dashboard
 
-Test assignment project for a Senior Front-end Engineer role. The application will provide a transactions management dashboard for a streaming service subscriber.
+Test assignment project for a Senior Front-end Engineer role. The application provides a transactions management dashboard for a streaming service subscriber.
 
-The target user should be able to review payment history, download mock invoices, and retry failed payments in bulk.
+Users can review payment history, download mock PDF invoices, and retry failed payments in bulk while each row keeps an independent loading state.
 
 ## Project Plan
 
@@ -18,7 +18,25 @@ Implementation is intentionally staged. After each stage, the agent must stop, r
 - Tailwind CSS 4
 - shadcn/ui components
 - pnpm
-- Vitest and React Testing Library will be added during Stage 3
+- Vitest
+- React Testing Library
+- jsdom
+
+## Features
+
+- Responsive transactions dashboard.
+- Transaction ID, amount, date and time, status, and invoice action columns.
+- Failed transactions can be selected for retry.
+- Non-failed transactions are not selectable.
+- `Retry Selected` is disabled until at least one failed transaction is selected.
+- Selected failed transactions retry concurrently with independent row states.
+- Retry simulation resolves after a random delay between 1 and 4 seconds.
+- Retry outcome is simulated as 80% success and 20% failure.
+- Invoice generation shows a row-level 2-second loading state.
+- Invoice download creates a valid dummy PDF file.
+- Toast notifications confirm invoice downloads.
+- Server Component page with a small Client Component boundary for interactive dashboard behavior.
+- Suspense fallback for streamed dashboard content.
 
 ## Architecture
 
@@ -57,21 +75,36 @@ Run linting:
 pnpm lint
 ```
 
+Run tests:
+
+```bash
+pnpm test
+```
+
 Run a production build:
 
 ```bash
 pnpm build
 ```
 
-Testing will be configured during Stage 3. After that stage, use:
+Before final delivery, verify the dashboard in a browser:
 
-```bash
-pnpm test
-```
+- the page loads without console errors;
+- desktop and mobile layouts are usable;
+- invoice download produces an openable PDF;
+- bulk retry rows resolve independently.
+
+## Documentation MCP
+
+Project MCP servers are configured in `.mcp.json`:
+
+- `next-devtools` for current Next.js guidance.
+- `context7` for current framework and library documentation.
+- `shadcn` for shadcn/ui registry and component guidance.
 
 ## Notes
 
 - The project does not use a real backend.
-- Transaction data and payment retry APIs will be simulated.
-- Invoice download will generate a dummy browser download.
-- Browser-based behavior should be verified manually after UI stages.
+- Transaction data and payment retry APIs are simulated.
+- Invoice download generates a dummy PDF browser download.
+- `PLAN.md` is the source of truth for implementation scope and staged workflow.
