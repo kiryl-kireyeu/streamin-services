@@ -4,6 +4,7 @@ import {
   RETRY_PAYMENT_MAX_DELAY_MS,
   RETRY_PAYMENT_MIN_DELAY_MS,
 } from "./constants";
+import { createInvoicePdfContent } from "./invoice-pdf";
 import { MOCK_TRANSACTIONS } from "./mock-data";
 import type {
   GenerateInvoiceOptions,
@@ -31,14 +32,14 @@ export const getRetryPaymentDelayMs = (random = Math.random) => {
 export const createInvoiceFile = (transaction: Transaction): InvoiceFile => ({
   fileName: `${transaction.invoiceNumber}.pdf`,
   mimeType: "application/pdf",
-  content: [
+  content: createInvoicePdfContent([
     "Streaming Service Invoice",
     `Invoice: ${transaction.invoiceNumber}`,
     `Transaction: ${transaction.id}`,
     `Amount: ${transaction.amount.toFixed(2)} ${transaction.currency}`,
     `Date: ${new Date(transaction.dateTime).toISOString()}`,
     `Status: ${transaction.status}`,
-  ].join("\n"),
+  ]),
 });
 
 export const getTransactions = async (): Promise<Transaction[]> =>

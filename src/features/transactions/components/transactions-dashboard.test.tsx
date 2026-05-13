@@ -299,4 +299,48 @@ describe("TransactionsDashboard", () => {
       screen.getByRole("button", { name: "Retry Selected" }),
     ).toBeDisabled();
   });
+
+  it("downloads an invoice after retrying the selected transaction", async () => {
+    const retryPaymentMock = vi.mocked(retryPayment);
+
+    retryPaymentMock.mockResolvedValueOnce(
+      createRetryResult("txn_1002", "Success"),
+    );
+
+    render(<TransactionsDashboard transactions={await getTransactions()} />);
+
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: "Select failed transaction txn_1002",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Retry Selected (1)" }));
+
+    await waitFor(() => {
+      expect(
+        within(screen.getByRole("row", { name: /txn_1002/ })).getByText(
+          "Success",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    vi.useFakeTimers();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Download invoice INV-2026-1002",
+      }),
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    expect(downloadInvoiceFile).toHaveBeenCalledTimes(1);
+    expect(downloadInvoiceFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileName: "INV-2026-1002.pdf",
+      }),
+    );
+  });
 });

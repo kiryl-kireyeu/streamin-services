@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { downloadInvoiceFile } from "../lib/download-invoice-file";
 import { generateInvoice, retryPayment } from "../lib/mock-api";
@@ -18,6 +18,7 @@ export const useTransactionsDashboard = (
   const [generatingInvoiceIds, setGeneratingInvoiceIds] = useState<
     Set<Transaction["id"]>
   >(() => new Set());
+  const generatingInvoiceIdsRef = useRef<Set<Transaction["id"]>>(new Set());
   const [retryingTransactionIds, setRetryingTransactionIds] = useState<
     Set<Transaction["id"]>
   >(() => new Set());
@@ -126,23 +127,12 @@ export const useTransactionsDashboard = (
   };
 
   const downloadInvoice = async (transaction: Transaction) => {
-    let shouldStartDownload = false;
-
-    setGeneratingInvoiceIds((currentIds) => {
-      if (currentIds.has(transaction.id)) {
-        return currentIds;
-      }
-
-      const nextIds = new Set(currentIds);
-      nextIds.add(transaction.id);
-      shouldStartDownload = true;
-
-      return nextIds;
-    });
-
-    if (!shouldStartDownload) {
+    if (generatingInvoiceIdsRef.current.has(transaction.id)) {
       return;
     }
+
+    generatingInvoiceIdsRef.current.add(transaction.id);
+    setGeneratingInvoiceIds(new Set(generatingInvoiceIdsRef.current));
 
     try {
       const invoiceFile = await generateInvoice(transaction);
@@ -151,12 +141,8 @@ export const useTransactionsDashboard = (
     } catch {
       toast.error(`Invoice ${transaction.invoiceNumber} could not be downloaded.`);
     } finally {
-      setGeneratingInvoiceIds((currentIds) => {
-        const nextIds = new Set(currentIds);
-        nextIds.delete(transaction.id);
-
-        return nextIds;
-      });
+      generatingInvoiceIdsRef.current.delete(transaction.id);
+      setGeneratingInvoiceIds(new Set(generatingInvoiceIdsRef.current));
     }
   };
 

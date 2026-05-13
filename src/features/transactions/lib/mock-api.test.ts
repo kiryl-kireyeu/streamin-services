@@ -43,10 +43,16 @@ describe("transactions mock api", () => {
     await expect(invoicePromise).resolves.toMatchObject({
       fileName: "INV-2026-1001.pdf",
       mimeType: "application/pdf",
+      content: expect.stringContaining("%PDF-1.4"),
+    });
+    await expect(invoicePromise).resolves.toMatchObject({
       content: expect.stringContaining("Transaction: txn_1001"),
     });
     await expect(invoicePromise).resolves.toMatchObject({
       content: expect.stringContaining("Amount: 19.99 USD"),
+    });
+    await expect(invoicePromise).resolves.toMatchObject({
+      content: expect.stringContaining("%%EOF"),
     });
   });
 
